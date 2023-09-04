@@ -4,35 +4,33 @@ import numpy as np
 from pytesseract import Output
 import subprocess
 
-from main import WANT_DEBUG_SUBIMAGE
 
-DEBUG = False
+WANT_DEBUG_LINE_FIND = False
+WANT_DEBUG_GRID = True
+WANT_DEBUG_SUBIMAGE = False
+WANT_DEBUG_TITLE = False
+WANT_DEBUG_SLICE = False
+VERBOSE = True
 
 
 def show_until_destroyed(img_name, img):
     cv2.imshow(img_name, img)
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
-
-def extract_all_text(image):
+def extract_date(image):
     # Increase contrast
-    image = adjust_contrast_brightness(image, contrast=2.0, brightness=0)
-
+    # image = adjust_contrast_brightness(image, contrast=2.0, brightness=0)
+    text = pytesseract.image_to_string(image)
+    print(text)
     # Extract boxes
-    dictionary = pytesseract.image_to_data(image, output_type=Output.DICT)
+    # dictionary = pytesseract.image_to_data(image, output_type=Output.DICT)
 
-    if DEBUG:
-        cv2.imwrite("temp_output.png", image)
-        process = subprocess.run(["tesseract", "temp_output.png", "temp.txt", "config.txt"], shell=False,
-                                 stdout=subprocess.PIPE)
+    # # Run multiple passes at catching text with OCR; can expand range
+    # for i in range(13, 14):
+    #     dictionary_temp = pytesseract.image_to_data(image, config='--psm ' + str(i), output_type=Output.DICT)
+    #     dictionary = dictionary_temp | dictionary
 
-    # Run multiple passes at catching text with OCR; can expand range
-    for i in range(13, 14):
-        dictionary_temp = pytesseract.image_to_data(image, config='--psm ' + str(i), output_type=Output.DICT)
-        dictionary = dictionary_temp | dictionary
-
-    return dictionary
+    return text
 
 
 def get_pixel(img, arg):
@@ -73,12 +71,22 @@ def adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0):
     return cv2.addWeighted(img, contrast, img, 0, brightness)
 
 
-def extract_line(img, x0, x1, y0, y1, mode):
+def extract_line(img, x0, x1, y0, y1, mode, threshold=20):
     sub_image = img[y0:y1, x0:x1]
 
     # Binarize for line extraction
-    sub_image = reduce_color_count(sub_image, 2)
-    pixel_value = get_pixel(sub_image, -2)
+    shape = np.shape(sub_image)
+    pixel_to_target = [230, 230, 230]
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            pixel = sub_image[i, j]
+
+            if is_close(pixel, pixel_to_target, threshold):
+                sub_image[i, j] = [0, 0, 0]
+            # else:
+            #     sub_image[i, j] = [255, 255, 255]
+
+    pixel_value = [0, 0, 0]
 
     if WANT_DEBUG_SUBIMAGE:
         cv2.imshow('img', sub_image)
@@ -92,7 +100,7 @@ def extract_line(img, x0, x1, y0, y1, mode):
                 pixel = sub_image[i, j]
                 if is_close(pixel, pixel_value):
                     row_score = row_score + 1
-            if row_score > 0.5 * shape[1]:  # Threshold set by inspection; can be modified
+            if row_score > 0.3 * shape[1]:  # Threshold set by inspection; can be modified
                 return i
 
     if mode == "vertical":
@@ -104,5 +112,5 @@ def extract_line(img, x0, x1, y0, y1, mode):
                 if is_close(pixel, pixel_value):
                     col_score = col_score + 1
 
-            if col_score > 0.25 * shape[0]:  # Threshold set by inspection; can be modified
+            if col_score > 0.3 * shape[0]:
                 return j
