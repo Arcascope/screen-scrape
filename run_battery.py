@@ -155,7 +155,8 @@ def get_clicks(name,img):
             continue
 
         roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
-        cv2.imwrite(f"debug/{name}_clicked.png", roi)
+        save_name = name.split('/')[-1].split('.')[0]
+        cv2.imwrite(f"./debug/{save_name}_clicked.png", roi)
         cv2.imshow("Clicked region (Press space to continue)", roi)
         cv2.waitKey(0)
 
@@ -167,12 +168,11 @@ def get_clicks(name,img):
         if roi_width <= 0 or roi_height <= 0:
             msg = "Grid detection failed! Please try again"
             print(msg)
-
             is_valid = False
             continue
 
         if WANT_DEBUG_GRID:
-            cv2.imwrite(f"debug/{name}_updated.png", roi)
+            cv2.imwrite(f"debug/{save_name}_updated.png", roi)
             cv2.imshow('Updated grid (Press space to continue)', roi)
             cv2.waitKey(1000)
             cv2.destroyAllWindows()  # destroys the window showing image
@@ -289,7 +289,6 @@ if __name__ == '__main__':
     # rows = process_battery("data/usc-data/1174/1174_10.30.20_11.25.jpg") # AM/PM test canonical example
     # process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")  # Dark mode canonical example
     # process_battery("data/Example-Battery-Image.png")
-    print(rows)
     root_directory = 'data/usc-data/*/'
     folder_list = [f for f in iglob(root_directory, recursive=False) if os.path.isdir(f)]
 

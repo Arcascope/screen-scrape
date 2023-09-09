@@ -5,7 +5,7 @@ import numpy as np
 
 WANT_DEBUG_LINE_FIND = False
 WANT_DEBUG_GRID = True
-WANT_DEBUG_SUBIMAGE = False
+WANT_DEBUG_SUBIMAGE = True
 WANT_DEBUG_TITLE = False
 WANT_DEBUG_SLICE = False
 WANT_DEBUG_TEXT = False
@@ -103,7 +103,7 @@ def extract_line(img, x0, x1, y0, y1, mode, threshold=20):
                 pixel = sub_image[i, j]
                 if is_close(pixel, count_color):
                     row_score = row_score + 1
-            if row_score > 0.5 * shape[1]:  # Threshold set by inspection; can be modified
+            if row_score > 0.7 * shape[1]:  # Threshold set by inspection; can be modified
                 return i
 
     if mode == "vertical":
