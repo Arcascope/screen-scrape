@@ -1,22 +1,24 @@
-# Steps we need to follow:
-# 1. Load image. If dark mode, invert.
-# 2. Collect clicks from users
-# 3. Snap to grid from clicks
-# 4. Using grid location, identify date.
-# 5. Extract timing info from graph.
-# 6. Store info with date.
-# 7. Save on every iteration so it cannot be lost accidentally.
-
-
+import datetime
 import os
 from glob import iglob
 import pandas as pd
 
 from utils import *
 
+error_state = -1, -1, -1, -1
+
+def is_date(s):
+    try:
+        # %b for abbreviated month name
+        # %d for day of the month
+        datetime.datetime.strptime(s, '%b %d')
+        return True
+    except ValueError:
+        return False
 
 def snap_to_grid(img, x, y, w, h):
     buffer = 40
+    maximum_offset = 20
 
     #  Inch up until you find the grid...
     line_row = None
@@ -24,104 +26,171 @@ def snap_to_grid(img, x, y, w, h):
 
     # Inch down until you find the grid
     moving_index = 0
-    while line_row is None:
+    while line_row is None and moving_index < maximum_offset:
         line_row = extract_line(img,
                                 x,
                                 x + buffer,
                                 y - buffer + moving_index,
                                 y + moving_index, "horizontal")
         moving_index = moving_index + 1
+    if line_row is None:
+        return error_state
+
     upper_left_y = y + line_row + moving_index - buffer
 
     #  Inch right until you find the grid...
     moving_index = 0
-    while line_col is None:
+    while line_col is None and moving_index < maximum_offset:
         line_col = extract_line(img,
                                 x - buffer + moving_index,
                                 x + moving_index,
                                 y,
                                 y + buffer, "vertical")
         moving_index = moving_index + 1
+    if line_col is None:
+        return error_state
+
     upper_left_x = x - buffer + line_col + moving_index
 
     line_row = None
     line_col = None
 
-    #  Inch up until you find the grid...
+    #  Inch down until you find the grid...
     moving_index = 0
-    while line_row is None:
+    while line_row is None and moving_index < maximum_offset:
+        # Look at the gap between the second to last and last hour of the day
         line_row = extract_line(img,
-                                x + w - buffer,
-                                x + w + buffer,
+                                x + int(23 * w / 24 - buffer / 2),
+                                x + int(23 * w / 24 + buffer / 2),
                                 y + h + moving_index - buffer,
                                 y + h + moving_index,
                                 "horizontal")
 
         moving_index = moving_index + 1
+    if line_row is None:
+        return error_state
+
     lower_right_y = y + h - buffer + line_row + moving_index
 
     #  Inch right until you find the grid...
     moving_index = 0
-    while line_col is None:
+    while line_col is None and moving_index < maximum_offset:
         line_col = extract_line(img,
                                 x + w + moving_index - buffer,
                                 x + w + moving_index,
                                 y + h - buffer,
-                                y + h + buffer,
+                                y + h,
                                 "vertical")
         moving_index = moving_index + 1
+    if line_col is None:
+        return error_state
+
     lower_right_x = x + w - buffer + line_col + moving_index
 
-    print(x, y, w, h)
-    print(upper_left_x, upper_left_y, lower_right_x - upper_left_x, lower_right_y - upper_left_y)
     return upper_left_x, upper_left_y, lower_right_x - upper_left_x, lower_right_y - upper_left_y
 
 
 def process_battery(filename):
     img = cv2.imread(filename)
     img = scale_up(img, 4)
-    get_clicks(filename, img)
+    return get_clicks(filename,img)
 
 
-def get_text_rect(img, roi_x, roi_y, roi_width, roi_height):
+def get_text(img, roi_x, roi_y, roi_width, roi_height):
     text_y_start = roi_y + int(roi_height * 1.23)
     text_y_end = roi_y + int(roi_height * 1.46)
     text_x_width = int(roi_width / 8)
     first_location = img[text_y_start:text_y_end, roi_x:(roi_x + text_x_width)]
-    cv2.imshow("first loca", first_location)
-    cv2.waitKey(0)
-    print(extract_date(first_location))
+    second_location = img[text_y_start:text_y_end,
+                      roi_x + int(roi_width / 2):(roi_x + int(roi_width / 2) + text_x_width)]
+
+    if WANT_DEBUG_TEXT:
+        cv2.imshow("First text location", first_location)
+        cv2.waitKey(0)
+
+    first_date = extract_date(first_location).strip()
+    second_date = extract_date(second_location).strip()
+
+    if is_date(second_date):
+        is_pm = True
+    else:
+        is_pm = False
+    return first_date, second_date, is_pm
 
 
-def get_clicks(name, img):
-    global detecting_clicks
-    global click_points
-    detecting_clicks = True
-    click_points = []
-    cv2.namedWindow(winname=name)
+def get_clicks(name,img):
+    is_valid = False
+    msg = "Please select upper left and lower right corners"
+    rows = []
+    while not is_valid:
+        global detecting_clicks
+        global click_points
+        detecting_clicks = True
+        click_points = []
+        cv2.namedWindow(winname=msg)
 
-    cv2.imshow(name, img)
-    cv2.setMouseCallback(name, store_click)
-    while detecting_clicks:
-        cv2.waitKey(1)
+        cv2.imshow(msg, img)
+        cv2.setMouseCallback(msg, store_click)
+        while detecting_clicks:
+            cv2.waitKey(1)
 
-    roi_x = click_points[0][0]
-    roi_y = click_points[0][1]
-    roi_width = click_points[1][0] - roi_x
-    roi_height = click_points[1][1] - roi_y
-    cv2.destroyAllWindows()
+        roi_x = click_points[0][0]
+        roi_y = click_points[0][1]
+        roi_width = click_points[1][0] - roi_x
+        roi_height = click_points[1][1] - roi_y
+        cv2.destroyAllWindows()
 
-    img_copy = img.copy()
+        if roi_width <= 0 or roi_height <= 0:
+            msg = "Invalid clicks! Please try again"
+            print(msg)
 
-    roi_x, roi_y, roi_width, roi_height = snap_to_grid(img, roi_x, roi_y, roi_width, roi_height)
-    row = slice_image(img_copy, name, roi_x, roi_y, roi_width, roi_height)
-    text_rect = get_text_rect(img_copy, roi_x, roi_y, roi_width, roi_height)
+            is_valid = False
+            continue
 
-    roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
-    cv2.imshow(name, roi)
+        roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
+        cv2.imwrite(f"debug/{name}_clicked.png", roi)
+        cv2.imshow("Clicked region (Press space to continue)", roi)
+        cv2.waitKey(0)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        img_copy = img.copy()
+
+        roi_x, roi_y, roi_width, roi_height = snap_to_grid(img, roi_x, roi_y, roi_width, roi_height)
+        roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
+
+        if roi_width <= 0 or roi_height <= 0:
+            msg = "Grid detection failed! Please try again"
+            print(msg)
+
+            is_valid = False
+            continue
+
+        if WANT_DEBUG_GRID:
+            cv2.imwrite(f"debug/{name}_updated.png", roi)
+            cv2.imshow('Updated grid (Press space to continue)', roi)
+            cv2.waitKey(1000)
+            cv2.destroyAllWindows()  # destroys the window showing image
+
+        answer = input("Does this look right? (y/n)")
+
+        if answer == "n" or answer == "N":
+            is_valid = False
+            continue
+
+        is_valid = True
+        row_raw = slice_image(img_copy, roi_x, roi_y, roi_width, roi_height)
+        text1, text2, is_pm = get_text(img_copy, roi_x, roi_y, roi_width, roi_height)
+        if is_pm:
+            row1 = [text1] + [-1] * 12 + row_raw[:12]
+            row2 = [text2] + row_raw[12:] + [-1] * 12
+
+            rows.append(row1)
+            rows.append(row2)
+
+        else:
+            row = [text1] + row_raw
+            rows.append(row)
+
+    return rows
 
 
 def scale_up(img, scale_amount):
@@ -147,7 +216,8 @@ def remove_all_but(img, color, threshold=30):
     return img
 
 
-def slice_image(img, title, roi_x=1215, roi_y=384, roi_width=1078, roi_height=177):
+def slice_image(img, roi_x=1215, roi_y=384, roi_width=1078, roi_height=177):
+    print("Slicing image...")
     num_slice = 24  # Hours per day
     max_y = 60  # Units of minutes
     dark_blue = [255, 121, 0]
@@ -158,17 +228,9 @@ def slice_image(img, title, roi_x=1215, roi_y=384, roi_width=1078, roi_height=17
     roi_height = roi_height * scale_amount
     roi_width = roi_width * scale_amount
 
-    row = [title]
-    roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
+    row = []
 
     slice_width_float = int(roi_width / num_slice)
-
-    if WANT_DEBUG_GRID:
-        cv2.imshow('Grid ROI', roi)
-        cv2.waitKey(1000)
-        cv2.destroyAllWindows()  # destroys the window showing image
-    if VERBOSE:
-        print("Does the image look right?")
 
     all_times = []  # Holder for all hours over the day
 
@@ -185,7 +247,6 @@ def slice_image(img, title, roi_x=1215, roi_y=384, roi_width=1078, roi_height=17
             show_until_destroyed('Slice of image', slice_of_image)
 
         # Slice down the middle
-        off_white_threshold = 250 * 3
         true_slice = slice_of_image[:, int(slice_width_float / 2), :]
         rows = len(true_slice)
         counter = 0
@@ -199,8 +260,10 @@ def slice_image(img, title, roi_x=1215, roi_y=384, roi_width=1078, roi_height=17
 
         row.append(usage_at_time)
         all_times.append(usage_at_time)
-    cv2.imshow('Grid ROI', img)
-    cv2.waitKey(0)
+
+    if WANT_DEBUG_SLICE:
+        cv2.imshow('Grid ROI', img)
+        cv2.waitKey(0)
 
     row.append(np.sum(all_times))
     return row
@@ -217,17 +280,17 @@ def store_click(event, x, y, flags, param):
 
 
 if __name__ == '__main__':
-    process_battery("data/Example-Battery-Image.png")
-    root_directory = 'data/*/'
-    # df = pd.DataFrame()
-    #
+    process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")
+    # process_battery("data/Example-Battery-Image.png")
+    root_directory = 'data/usc-data/*/'
     folder_list = [f for f in iglob(root_directory, recursive=False) if os.path.isdir(f)]
 
     # Loop over all folders in folder list
     for folder in folder_list:
         all_rows = []
         participant = folder.split("/")[-2]
-        print(participant)
+
+        print(f"For {participant}...")
 
         file_list = [f for f in iglob(folder + "**/*", recursive=True) if
                      os.path.isfile(f)]
@@ -235,20 +298,22 @@ if __name__ == '__main__':
         # Recursively loop over all files
         for file in file_list:
             print("Running " + file + "...")
-            row = process_battery(file)
+            rows = process_battery(file)
 
-            if row is not None:
+            if rows is not None:
                 # Data-specific date formats
-                day = file.split("/")[2].split(" ")[0] + " " + file.split("/")[2].split(" ")[1]
-                date = file.split("/")[2].split(" ")[2]
-                row = [file, day, date] + row
-                all_rows.append(row)
+                print(file)
+                date = file.split("/")[-1].split("_")[1]
+                for row in rows:
+                    row = [file, date] + row
+                    all_rows.append(row)
 
+            print(all_rows)
             # If data extraction successful...
             if len(all_rows) > 0:
-                df = pd.DataFrame(np.squeeze(all_rows),
-                                  columns=['Filename', 'Day', 'Date', 'Title'] + list(range(24)) + ["Total"])
+                df = pd.DataFrame(all_rows,
+                                  columns=['Filename', 'File date', 'Date from Image'] + list(range(24)) + ["Total"])
                 sorted_df = df.sort_values(by=['Filename'], ascending=True)
 
-                with pd.ExcelWriter('output/Screen Time ' + participant + '.xlsx') as writer:
+                with pd.ExcelWriter('output/Battery ' + participant + '.xlsx') as writer:
                     sorted_df.to_excel(writer, sheet_name='sheet1')
