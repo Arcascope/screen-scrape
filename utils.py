@@ -5,7 +5,7 @@ import numpy as np
 
 WANT_DEBUG_LINE_FIND = False
 WANT_DEBUG_GRID = True
-WANT_DEBUG_SUBIMAGE = True
+WANT_DEBUG_SUBIMAGE = False
 WANT_DEBUG_TITLE = False
 WANT_DEBUG_SLICE = False
 WANT_DEBUG_TEXT = False
@@ -19,7 +19,6 @@ def show_until_destroyed(img_name, img):
 
 def extract_date(image):
     text = pytesseract.image_to_string(image)
-
     return text
 
 
@@ -85,7 +84,6 @@ def extract_line(img, x0, x1, y0, y1, mode, threshold=20):
     for i in range(shape[0]):
         for j in range(shape[1]):
             pixel = sub_image[i, j]
-            print(pixel)
             if is_close(pixel, pixel_to_target, threshold):
                 sub_image[i, j] = opposite_color
             else:

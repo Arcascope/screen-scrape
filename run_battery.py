@@ -9,12 +9,18 @@ error_state = -1, -1, -1, -1
 
 def is_date(s):
     try:
-        # %b for abbreviated month name
-        # %d for day of the month
         datetime.datetime.strptime(s, '%b %d')
         return True
     except ValueError:
         return False
+
+def get_day_before(s):
+    try:
+        dt = datetime.datetime.strptime(s, '%b %d')
+        day_before = dt - datetime.timedelta(days=1)
+        return day_before.strftime('%b %d')
+    except ValueError:
+        return None
 
 def snap_to_grid(img, x, y, w, h):
     buffer = 40
@@ -113,6 +119,7 @@ def get_text(img, roi_x, roi_y, roi_width, roi_height):
 
     if is_date(second_date):
         is_pm = True
+        first_date = get_day_before(second_date)
     else:
         is_pm = False
     return first_date, second_date, is_pm
@@ -180,9 +187,8 @@ def get_clicks(name,img):
         row_raw = slice_image(img_copy, roi_x, roi_y, roi_width, roi_height)
         text1, text2, is_pm = get_text(img_copy, roi_x, roi_y, roi_width, roi_height)
         if is_pm:
-            row1 = [text1] + [-1] * 12 + row_raw[:12]
-            row2 = [text2] + row_raw[12:] + [-1] * 12
-
+            row1 = [text1] + [-1] * 12 + row_raw[:12] + [-1]
+            row2 = [text2] + row_raw[12:24] + [-1] * 12 + [-1]
             rows.append(row1)
             rows.append(row2)
 
@@ -280,8 +286,10 @@ def store_click(event, x, y, flags, param):
 
 
 if __name__ == '__main__':
-    process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")
+    # rows = process_battery("data/usc-data/1174/1174_10.30.20_11.25.jpg") # AM/PM test canonical example
+    # process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")  # Dark mode canonical example
     # process_battery("data/Example-Battery-Image.png")
+    print(rows)
     root_directory = 'data/usc-data/*/'
     folder_list = [f for f in iglob(root_directory, recursive=False) if os.path.isdir(f)]
 
