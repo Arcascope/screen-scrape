@@ -1,4 +1,5 @@
 .idea/*
+slicing/
 debug/*
 .DS_Store
 data/*
