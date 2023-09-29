@@ -140,9 +140,7 @@ def get_clicks(name,img):
         cv2.imshow(msg, img)
         cv2.resizeWindow(msg, round(scale_factor * img.shape[1]), round(scale_factor * img.shape[0]))
 
-        # cv2.namedWindow(winname=msg)
-        #
-        # cv2.imshow(msg, img)
+
         cv2.setMouseCallback(msg, store_click)
         while detecting_clicks:
             cv2.waitKey(1)
@@ -161,7 +159,7 @@ def get_clicks(name,img):
             continue
 
         roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
-        save_name = name.split('/')[-1].split('.')[0]
+        save_name = name.split('\\')[-1].split('.')[0]
         cv2.imwrite(f"./debug/{save_name}_clicked.png", roi)
 
         expl = "Clicked region (Press space to continue)"
@@ -301,10 +299,10 @@ def store_click(event, x, y, flags, param):
 
 
 if __name__ == '__main__':
-    # rows = process_battery("data/usc-data/1174/1174_10.30.20_11.25.jpg") # AM/PM test canonical example
-    # process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")  # Dark mode canonical example
+    # rows = process_battery("data/usc-data-data/1174/1174_10.30.20_11.25.jpg") # AM/PM test canonical example
+    # process_battery("data/usc-data-data/1174/1174_10.16.20_21.02.jpg")  # Dark mode canonical example
     # process_battery("data/Example-Battery-Image.png")
-    root_directory = 'data/usc/*/'
+    root_directory = 'data/usc-data/*/'
     folder_list = [f for f in iglob(root_directory, recursive=False) if os.path.isdir(f)]
 
     # Loop over all folders in folder list
