@@ -134,9 +134,15 @@ def get_clicks(name,img):
         global click_points
         detecting_clicks = True
         click_points = []
-        cv2.namedWindow(winname=msg)
 
+        scale_factor = 0.1
+        cv2.namedWindow(msg, cv2.WINDOW_KEEPRATIO)
         cv2.imshow(msg, img)
+        cv2.resizeWindow(msg, round(scale_factor * img.shape[1]), round(scale_factor * img.shape[0]))
+
+        # cv2.namedWindow(winname=msg)
+        #
+        # cv2.imshow(msg, img)
         cv2.setMouseCallback(msg, store_click)
         while detecting_clicks:
             cv2.waitKey(1)
@@ -157,7 +163,11 @@ def get_clicks(name,img):
         roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
         save_name = name.split('/')[-1].split('.')[0]
         cv2.imwrite(f"./debug/{save_name}_clicked.png", roi)
-        cv2.imshow("Clicked region (Press space to continue)", roi)
+
+        expl = "Clicked region (Press space to continue)"
+        cv2.namedWindow(expl, cv2.WINDOW_KEEPRATIO)
+        cv2.imshow(expl, roi)
+        cv2.resizeWindow(expl, round(scale_factor * roi.shape[1]), round(scale_factor * roi.shape[0]))
         cv2.waitKey(0)
 
         img_copy = img.copy()
@@ -173,11 +183,16 @@ def get_clicks(name,img):
 
         if WANT_DEBUG_GRID:
             cv2.imwrite(f"debug/{save_name}_updated.png", roi)
-            cv2.imshow('Updated grid (Press space to continue)', roi)
-            cv2.waitKey(1000)
+
+            grid = 'Updated grid (Press space to continue)'
+            cv2.namedWindow(grid, cv2.WINDOW_KEEPRATIO)
+            cv2.imshow(grid, roi)
+            cv2.resizeWindow(grid, round(scale_factor * roi.shape[1]), round(scale_factor * roi.shape[0]))
+
+            cv2.waitKey(0)
             cv2.destroyAllWindows()  # destroys the window showing image
 
-        answer = input("Does this look right? (y/n)")
+        answer = input("Did the grid look right? (y/n)")
 
         if answer == "n" or answer == "N":
             is_valid = False
@@ -289,7 +304,7 @@ if __name__ == '__main__':
     # rows = process_battery("data/usc-data/1174/1174_10.30.20_11.25.jpg") # AM/PM test canonical example
     # process_battery("data/usc-data/1174/1174_10.16.20_21.02.jpg")  # Dark mode canonical example
     # process_battery("data/Example-Battery-Image.png")
-    root_directory = 'data/usc-data/*/'
+    root_directory = 'data/usc/*/'
     folder_list = [f for f in iglob(root_directory, recursive=False) if os.path.isdir(f)]
 
     # Loop over all folders in folder list

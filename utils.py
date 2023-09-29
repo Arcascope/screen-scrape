@@ -2,7 +2,7 @@ import cv2
 import pytesseract
 import numpy as np
 
-
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 WANT_DEBUG_LINE_FIND = False
 WANT_DEBUG_GRID = True
 WANT_DEBUG_SUBIMAGE = False
