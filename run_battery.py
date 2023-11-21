@@ -7,12 +7,14 @@ from utils import *
 
 error_state = -1, -1, -1, -1
 
+
 def is_date(s):
     try:
         datetime.datetime.strptime(s, '%b %d')
         return True
     except ValueError:
         return False
+
 
 def get_day_before(s):
     try:
@@ -21,6 +23,7 @@ def get_day_before(s):
         return day_before.strftime('%b %d')
     except ValueError:
         return None
+
 
 def snap_to_grid(img, x, y, w, h):
     buffer = 40
@@ -99,7 +102,7 @@ def snap_to_grid(img, x, y, w, h):
 def process_battery(filename):
     img = cv2.imread(filename)
     img = scale_up(img, 4)
-    return get_clicks(filename,img)
+    return get_clicks(filename, img)
 
 
 def get_text(img, roi_x, roi_y, roi_width, roi_height):
@@ -114,8 +117,8 @@ def get_text(img, roi_x, roi_y, roi_width, roi_height):
         cv2.imshow("First text location", first_location)
         cv2.waitKey(0)
 
-    first_date = extract_date(first_location).strip()
-    second_date = extract_date(second_location).strip()
+    first_date = extract_date(first_location).strip().replace("'", "")
+    second_date = extract_date(second_location).strip().replace("'", "")
 
     if is_date(second_date):
         is_pm = True
@@ -125,7 +128,7 @@ def get_text(img, roi_x, roi_y, roi_width, roi_height):
     return first_date, second_date, is_pm
 
 
-def get_clicks(name,img):
+def get_clicks(name, img):
     is_valid = False
     msg = "Please select upper left and lower right corners"
     rows = []
