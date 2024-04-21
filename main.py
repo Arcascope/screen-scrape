@@ -5,8 +5,8 @@ import pandas as pd
 from utils import *
 
 WANT_DEBUG_LINE_FIND = False
-WANT_DEBUG_GRID = False
-WANT_DEBUG_SUBIMAGE = False
+WANT_DEBUG_GRID = True
+WANT_DEBUG_SUBIMAGE = True
 WANT_DEBUG_TITLE = False
 WANT_DEBUG_SLICE = False
 WANT_DEBUG_LEFT = False
@@ -40,6 +40,7 @@ def find_right_anchor(d, img, img_copy):
                 line_col = None
 
                 #  Inch up until you find the grid...
+                print("Moving up to search for right anchor...")
                 moving_index = 0
                 while line_row is None:
                     line_row = extract_line(img,
@@ -51,6 +52,7 @@ def find_right_anchor(d, img, img_copy):
                 upper_right_y = y + line_row - moving_index
 
                 #  Inch left until you find the grid...
+                print("Moving left to search for right anchor...")
                 moving_index = 0
                 while line_col is None:
                     line_col = extract_line(img,
@@ -77,7 +79,7 @@ def find_left_anchor(d, img, img_copy):
     n_boxes = len(d['level'])
     lower_left_x = -1
     lower_left_y = -1
-    buffer = 25
+    buffer = 40
     key_list = ["2A", "12", "AM"]
 
     for i in range(n_boxes):
@@ -98,6 +100,7 @@ def find_left_anchor(d, img, img_copy):
                 line_col = None
 
                 #  Inch up until you find the grid...
+                print("Moving up to search for left anchor...")
                 moving_index = 0
                 while line_row is None:
                     line_row = extract_line(img,
@@ -111,11 +114,12 @@ def find_left_anchor(d, img, img_copy):
                 lower_left_y = y - buffer + line_row - moving_index
 
                 #  Inch left until you find the grid...
+                print("Moving left to search for left anchor...")
                 moving_index = 0
                 while line_col is None:
                     line_col = extract_line(img,
                                             x - moving_index - buffer,
-                                            x - moving_index + buffer,
+                                            x - moving_index,
                                             y - buffer,
                                             y,
                                             "vertical")
@@ -222,6 +226,8 @@ def process_screen_time(filename):
         roi_y = upper_right_y
         roi_width = upper_right_x - lower_left_x
         roi_height = lower_left_y - upper_right_y
+        # roi_x, roi_y, roi_width, roi_height = snap_to_grid(img, roi_x, roi_y, roi_width, roi_height)
+
         return load_image(filename, title, roi_x, roi_y, roi_width, roi_height)
     else:
         print("Couldn't find graph anchors!")
@@ -312,7 +318,7 @@ def load_image(name, title, roi_x=1215, roi_y=384, roi_width=1078, roi_height=17
 
 
 if __name__ == '__main__':
-    # process_screen_time("bcm/P3-3009 Cropped/Day 8 9.9.23/IMG_0725.PNG")
+    process_screen_time("data/jenny_ipad/IMG_0176 Cropped.png")
     # process_screen_time("../../Downloads/Screenshot 2023-05-11 at 2.10.27 PM.png")
     acceptable_types = ["PNG", "JPG"]  # Only run these files
     omit_keys = ["Parental"]  # Don't run files with these
