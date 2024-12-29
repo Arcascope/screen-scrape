@@ -15,6 +15,30 @@ VERBOSE = True
 error_state = -1, -1, -1, -1
 
 
+def find_closest_date_substring(text):
+    # Regex pattern for "Day, Month Day" format
+    date_pattern = r"^[A-Za-z]+, [A-Za-z]+ \d{1,2}$"
+
+    def is_valid_date_format(s):
+        """Check if a substring matches the general date format."""
+        return bool(re.fullmatch(date_pattern, s))
+
+    # Split the input string by spaces and recombine into substrings
+    words = text.split()
+    for i in range(len(words)):
+        for j in range(i + 1, len(words) + 1):
+            substring = " ".join(words[i:j])
+            if is_valid_date_format(substring):
+                remove_first = substring.split(", ")[-1]
+                return remove_first
+
+    return ""  # Return nothing if no valid date format is found
+
+def find_date_in_image(img):
+    date_find = pytesseract.image_to_data(img, config='--psm 6', output_type=Output.DICT)
+    all_text_combined = ' '.join(date_find['text'])
+    return find_closest_date_substring(all_text_combined)
+
 def find_screenshot_title(img):
     title = ""
 
@@ -302,6 +326,7 @@ def slice_image(img, roi_x=1215, roi_y=384, roi_width=1078, roi_height=177):
     scale_amount = 4
 
     img = darken_non_white(img)
+
     img = reduce_color_count(img, 2)
 
     img = scale_up(img, scale_amount)

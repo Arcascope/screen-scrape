@@ -54,13 +54,15 @@ class BatteryRow:
 class ScreenTimeRow:
     @classmethod
     def headers(cls):
-        return ['Full path', 'File name', 'ID', 'Date from file name', "App title"] + list(range(24)) + ["Total"]
+        return ['Full path', 'File name', 'ID', 'Date from file name', "Date from image", "App title"] + list(
+            range(24)) + ["Total"]
 
-    def __init__(self, full_path, file_name, app_title, rows):
+    def __init__(self, full_path, file_name, date_from_image, app_title, rows):
         super().__init__()
         self.full_path = full_path
         self.file_name = file_name
         self.app_title = app_title
+        self.date_from_image = date_from_image
         self.rows = rows
 
     def date_extracted_from_file_name(self):
@@ -79,17 +81,18 @@ class ScreenTimeRow:
 
     def to_csv_row(self):
         return [self.full_path, self.file_name, self.subject_id_extracted_from_file_path(),
-                self.date_extracted_from_file_name(), self.app_title] + self.rows
+                self.date_extracted_from_file_name(), self.date_from_image, self.app_title] + self.rows
 
 
 class ScreenshotApp(QWidget):
-    
     length_dimension = 600
 
     def __init__(self):
         super().__init__()
         self.time_mapping = None
-        self.extra_label = None
+        self.date_from_image_label = None
+        self.app_name_label = None
+
         self.mode = "Battery"
         self.graph_image_label = None
         self.snap_to_grid_checkbox = None
@@ -98,7 +101,8 @@ class ScreenshotApp(QWidget):
         self.previous_button = None
         self.time_label = None
         self.time_slider = None
-        self.extra_label_edit = None
+        self.date_from_image_label_edit = None
+        self.app_name_label_edit = None
         self.image_name_line_edit = None
         self.cropped_image_label = None
         self.image_label = None
@@ -112,7 +116,7 @@ class ScreenshotApp(QWidget):
         self.init_ui()
         self.current_row = None
         self.failed = None
-        
+
     def init_ui(self):
         self.setWindowTitle('Screenshot Slideshow')
         self.setStyleSheet("QWidget { font-size: 14px; } QPushButton { font-weight: bold; }")
@@ -133,7 +137,6 @@ class ScreenshotApp(QWidget):
         self.instruction_label.setFixedHeight(50)
         layout.addWidget(self.instruction_label)
         self.instruction_label.hide()
-
 
         main_image_layout = QHBoxLayout()
         layout.addLayout(main_image_layout)
@@ -168,10 +171,16 @@ class ScreenshotApp(QWidget):
         self.image_name_line_edit = QLineEdit("IMG_8383.png")
         text_fields_layout.addWidget(self.image_name_line_edit)
         #
-        self.extra_label = QLabel("App Name:")
-        text_fields_layout.addWidget(self.extra_label)
-        self.extra_label_edit = QLineEdit("")
-        text_fields_layout.addWidget(self.extra_label_edit)
+        self.date_from_image_label = QLabel("Date from image:")
+        text_fields_layout.addWidget(self.date_from_image_label)
+        self.date_from_image_label_edit = QLineEdit("")
+        text_fields_layout.addWidget(self.date_from_image_label_edit)
+
+        self.app_name_label = QLabel("App Name:")
+        text_fields_layout.addWidget(self.app_name_label)
+        self.app_name_label_edit = QLineEdit("")
+        text_fields_layout.addWidget(self.app_name_label_edit)
+
         self.snap_to_grid_checkbox = QCheckBox("Automatically snap to grid", self)
         text_fields_layout.addWidget(self.snap_to_grid_checkbox)
 
@@ -225,7 +234,7 @@ class ScreenshotApp(QWidget):
     def update_instruction_label(self):
         if not self.failed:
             self.instruction_label.setText(
-            "Click Next/Save if the graphs match, otherwise click the upper left corner of the graph in the left image to reselect."
+                "Click Next/Save if the graphs match, otherwise click the upper left corner of the graph in the left image to reselect."
             )
             self.instruction_label.setStyleSheet("background-color:rgb(255,255,150)")
         else:
@@ -235,16 +244,19 @@ class ScreenshotApp(QWidget):
             self.instruction_label.setStyleSheet("background-color:rgb(255,0,0)")
 
     def adjust_ui_for_image_type(self, image_type):
+
+        self.app_name_label.setText("Extracted app name:")
+        self.app_name_label_edit.show()
+
+        self.date_from_image_label.setText("Date of first displayed time:")
+        self.date_from_image_label_edit.show()
+
         if image_type == "Battery":
-            self.extra_label.setText("Date of first displayed time:")
-            self.extra_label_edit.show()
             self.slider.show()
             self.time_label.show()
             self.instruction_label.show()
 
         elif image_type == "ScreenTime":
-            self.extra_label.setText("Extracted app name:")
-            self.extra_label_edit.show()
             self.slider.hide()
             self.time_label.hide()
             self.instruction_label.show()
@@ -257,7 +269,7 @@ class ScreenshotApp(QWidget):
 
         if self.click_count == 1:
             self.instruction_label.setText(
-               "Now click the bottom right corner of the graph in the left image to finish the selection."
+                "Now click the bottom right corner of the graph in the left image to finish the selection."
             )
             self.instruction_label.setStyleSheet("background-color:rgb(0,255,0)")
         elif self.click_count == 2:
@@ -289,13 +301,13 @@ class ScreenshotApp(QWidget):
         print(f"Display width: {display_width}, Display height: {display_height}")
 
         print("Processing image from clicks...")
-        processed_image_path, graph_image_path, row, title = process_image_with_grid(image_path,
-                                                                                     true_upper_left,
-                                                                                     true_lower_right,
-                                                                                     self.mode == "Battery",
-                                                                                     self.snap_to_grid_checkbox.isChecked())
+        processed_image_path, graph_image_path, row, title, date_in_image = process_image_with_grid(image_path,
+                                                                                                    true_upper_left,
+                                                                                                    true_lower_right,
+                                                                                                    self.mode == "Battery",
+                                                                                                    self.snap_to_grid_checkbox.isChecked())
 
-        self.update(title, row, processed_image_path, graph_image_path)
+        self.update(title, date_in_image, row, processed_image_path, graph_image_path)
 
     def update_time_label(self, value):
         selected_time = self.time_mapping.get(value, "Midnight")
@@ -326,20 +338,21 @@ class ScreenshotApp(QWidget):
             self.cropped_image_label.setText("No cropped image loaded.")
             self.image_name_line_edit.setText("Image name will appear here.")
 
-    def update(self, title, row, processed_image_path, graph_image_path):
+    def update(self, title, date_in_image, row, processed_image_path, graph_image_path):
 
-        self.extra_label_edit.setText(title)
-
+        self.date_from_image_label_edit.setText(date_in_image)
+        self.app_name_label_edit.setText(title)
         if self.mode == "Battery":
             self.current_row = BatteryRow(full_path=self.images[self.current_image_index],
                                           file_name=self.image_name_line_edit.text(),
-                                          date_from_image=self.extra_label_edit.text(),
+                                          date_from_image=self.date_from_image_label_edit.text(),
                                           time_from_ui=self.time_mapping[self.slider.value()],
                                           rows=row)
         else:
             self.current_row = ScreenTimeRow(full_path=self.images[self.current_image_index],
                                              file_name=self.image_name_line_edit.text(),
-                                             app_title=self.extra_label_edit.text(),
+                                             date_from_image=self.date_from_image_label_edit.text(),
+                                             app_title=self.app_name_label_edit.text(),
                                              rows=row)
 
         if processed_image_path:
@@ -351,7 +364,7 @@ class ScreenshotApp(QWidget):
             self.update_instruction_label()
 
         else:
-            self.cropped_image_label.setText("No cropped image could be loaded from the selection.")            
+            self.cropped_image_label.setText("No cropped image could be loaded from the selection.")
             self.failed = True
             self.update_instruction_label()
 
@@ -378,11 +391,11 @@ class ScreenshotApp(QWidget):
             self.image_name_line_edit.setText(os.path.basename(image_path))
             self.current_image_index = index
 
-            processed_image_path, graph_image_path, row, title = process_image(image_path,
-                                                                               self.mode == "Battery",
-                                                                               self.snap_to_grid_checkbox.isChecked())
+            processed_image_path, graph_image_path, row, title, date_in_image = process_image(image_path,
+                                                                                              self.mode == "Battery",
+                                                                                              self.snap_to_grid_checkbox.isChecked())
 
-            self.update(title, row, processed_image_path, graph_image_path)
+            self.update(title, date_in_image, row, processed_image_path, graph_image_path)
 
         else:
             self.image_label.setText("No image loaded.")
@@ -395,6 +408,11 @@ class ScreenshotApp(QWidget):
             self.save_current_row()
             if self.current_image_index + 1 < len(self.images):
                 self.show_image(self.current_image_index + 1)
+            else:
+                self.instruction_label.setText(
+                    "Images complete."
+                )
+                self.instruction_label.setStyleSheet("background-color:rgb(0,0,0)")
 
     def show_previous_image(self):
         if self.current_image_index > 0:
@@ -403,19 +421,20 @@ class ScreenshotApp(QWidget):
     def save_current_row(self):
         if self.current_row:
             csv_path = (
-                os.path.dirname(sys.argv[0])
-                + "/output/"
-                + os.path.basename(self.folder_name)
-                + ".csv"
+                    os.path.dirname(sys.argv[0])
+                    + "/output/"
+                    + os.path.basename(self.folder_name)
+                    + ".csv"
             )
-        
+
             if self.mode == "Battery":
                 headers = BatteryRow.headers()
-                self.current_row.date_from_image = self.extra_label_edit.text()
+                self.current_row.date_from_image = self.date_from_image_label_edit.text()
                 self.current_row.time_from_ui = self.time_mapping[self.slider.value()]
             else:
                 headers = ScreenTimeRow.headers()
-                self.current_row.app_title = self.extra_label_edit.text()
+                self.current_row.app_title = self.app_name_label_edit.text()
+                self.current_row.date_from_image = self.date_from_image_label_edit.text()
 
             if not os.path.exists(csv_path):
                 df = pd.DataFrame(columns=headers)

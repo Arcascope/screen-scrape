@@ -62,19 +62,20 @@ def process_image_with_grid(filename, upper_left, lower_right, is_battery=False,
         roi_x = upper_left_x
         roi_y = upper_left_y
 
+
         if is_battery:
-            print("Extracting time...")
-            title = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
+            date_in_image = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
         else:
-            print("Extracting title...")
-            title = find_screenshot_title(img)
+            date_in_image = find_date_in_image(img)
+        print("Extracting title...")
+        title = find_screenshot_title(img)
 
         filename, row, graph_filename = save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery)
-        return filename, graph_filename, row, title
+        return filename, graph_filename, row, title, date_in_image
 
     except ImageProcessingError as e:
         print(f"Error: {traceback.format_exc()}")
-        return None, None, list(range(25)), ""
+        return None, None, list(range(25)), "", ""
 
 
 def process_image(filename, is_battery=False, snap_to_grid=False):
@@ -83,7 +84,7 @@ def process_image(filename, is_battery=False, snap_to_grid=False):
         return apply_processing(filename, img, is_battery, snap_to_grid)
     except Exception as e:
         print(f"Error during image loading or processing: {traceback.format_exc()}")
-        return None, None, list(range(25)), ""
+        return None, None, list(range(25)), "", ""
 
 
 def adjust_anchor_offsets(d_right, offset):
@@ -114,16 +115,18 @@ def apply_processing(filename, img, is_battery, snap_to_grid):
             snap_to_grid, img)
 
         if is_battery:
-            title = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
+            date_in_image = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
         else:
-            title = find_screenshot_title(img)
+            date_in_image = find_date_in_image(img)
 
-        # Save the processed image and return
+        title = find_screenshot_title(img)
+
         filename, row, graph_filename = save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery)
-        return filename, graph_filename, row, title
+        return filename, graph_filename, row, title, date_in_image
+
     except Exception:
         print(f"Processing failed: {traceback.format_exc()}")
-        return None, None, [], ""
+        return None, None, [], "", ""
 
 
 def find_time(img, roi_x, roi_y, roi_width, roi_height):
