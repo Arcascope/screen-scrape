@@ -229,6 +229,10 @@ class ScreenshotApp(QWidget):
         self.next_button.clicked.connect(self.show_next_image)
         nav_layout.addWidget(self.next_button)
 
+        self.skip_button = QPushButton('Skip')
+        self.skip_button.clicked.connect(self.skip_image)
+        nav_layout.addWidget(self.skip_button)
+
         layout.addLayout(nav_layout)
 
         screen_geo = QDesktopWidget().screenGeometry()
@@ -433,6 +437,10 @@ class ScreenshotApp(QWidget):
                 )
                 self.instruction_label.setStyleSheet(
                     "background-color:rgb(0,0,0)")
+
+    def skip_image(self):
+        if self.current_image_index + 1 < len(self.images):
+            self.show_image(self.current_image_index + 1)
 
     def show_previous_image(self):
         if self.current_image_index > 0:
