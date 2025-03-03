@@ -20,6 +20,10 @@ def load_and_validate_image(filename):
     """Load an image and validate its existence."""
     img = cv2.imread(filename)
     img = convert_dark_mode(img)
+    if WANT_DEBUG_SUBIMAGE:
+        cv2.imshow('img', img)
+        cv2.waitKey(0)
+
     if img is None:
         raise ImageProcessingError("Failed to load image.")
     return img
@@ -57,20 +61,22 @@ def process_image_with_grid(filename, upper_left, lower_right, is_battery=False,
                                                                                       snap_func, img)
 
         if upper_left_x < 0 or upper_left_y < 0:
-            raise ImageProcessingError("ROI coordinates are out of image bounds.")
+            raise ImageProcessingError(
+                "ROI coordinates are out of image bounds.")
 
         roi_x = upper_left_x
         roi_y = upper_left_y
 
-
         if is_battery:
-            date_in_image = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
+            date_in_image = find_time(
+                img_copy, roi_x, roi_y, roi_width, roi_height)
         else:
             date_in_image = find_date_in_image(img)
         print("Extracting title...")
         title = find_screenshot_title(img)
 
-        filename, row, graph_filename = save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery)
+        filename, row, graph_filename = save_image(
+            filename, roi_x, roi_y, roi_width, roi_height, is_battery)
         return filename, graph_filename, row, title, date_in_image
 
     except ImageProcessingError as e:
@@ -83,7 +89,8 @@ def process_image(filename, is_battery=False, snap_to_grid=False):
         img = load_and_validate_image(filename)
         return apply_processing(filename, img, is_battery, snap_to_grid)
     except Exception as e:
-        print(f"Error during image loading or processing: {traceback.format_exc()}")
+        print(
+            f"Error during image loading or processing: {traceback.format_exc()}")
         return None, None, list(range(25)), "", ""
 
 
@@ -103,25 +110,30 @@ def apply_processing(filename, img, is_battery, snap_to_grid):
         adjust_anchor_offsets(d_right, right_offset)
 
         # Detect anchors
-        found_12, lower_left_x, lower_left_y = find_left_anchor(d_left, img, img_copy)
-        found_60, upper_right_x, upper_right_y = find_right_anchor(d_right, img, img_copy)
+        found_12, lower_left_x, lower_left_y = find_left_anchor(
+            d_left, img, img_copy)
+        found_60, upper_right_x, upper_right_y = find_right_anchor(
+            d_right, img, img_copy)
 
         if not found_12 or not found_60:
             raise ValueError("Couldn't find graph anchors!")
 
         # Calculate and possibly snap to region of interest
         roi_x, roi_y, roi_width, roi_height = calculate_roi(
-            lower_left_x, upper_right_y, upper_right_x - lower_left_x, lower_left_y - upper_right_y,
+            lower_left_x, upper_right_y, upper_right_x -
+            lower_left_x, lower_left_y - upper_right_y,
             snap_to_grid, img)
 
         if is_battery:
-            date_in_image = find_time(img_copy, roi_x, roi_y, roi_width, roi_height)
+            date_in_image = find_time(
+                img_copy, roi_x, roi_y, roi_width, roi_height)
         else:
             date_in_image = find_date_in_image(img)
 
         title = find_screenshot_title(img)
 
-        filename, row, graph_filename = save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery)
+        filename, row, graph_filename = save_image(
+            filename, roi_x, roi_y, roi_width, roi_height, is_battery)
         return filename, graph_filename, row, title, date_in_image
 
     except Exception:
@@ -138,7 +150,8 @@ def find_time(img, roi_x, roi_y, roi_width, roi_height):
 def prepare_image_chunks(img):
     img_chunk_num = 3
     img_width, img_height = img.shape[1], img.shape[0]
-    top_removal = int(img_height * 0.10)  # Removing top 10% of the image to minimize risk of failed grid detection
+    # Removing top 10% of the image to minimize risk of failed grid detection
+    top_removal = int(img_height * 0.10)
 
     # Split image into left and right for anchor detection
     img_left = img[:, :int(img_width / img_chunk_num)]
@@ -153,8 +166,10 @@ def prepare_image_chunks(img):
 
 
 def perform_ocr(img_left, img_right):
-    d_left = pytesseract.image_to_data(img_left, config='--psm 12', output_type=Output.DICT)
-    d_right = pytesseract.image_to_data(img_right, config='--psm 12', output_type=Output.DICT)
+    d_left = pytesseract.image_to_data(
+        img_left, config='--psm 12', output_type=Output.DICT)
+    d_right = pytesseract.image_to_data(
+        img_right, config='--psm 12', output_type=Output.DICT)
     return d_left, d_right
 
 
@@ -164,9 +179,11 @@ def calculate_roi(lower_left_x, upper_right_y, roi_width, roi_height, snap_to_gr
             img, lower_left_x, upper_right_y, roi_width, roi_height)
 
     if lower_left_x < 0:
-        raise ValueError(f"Invalid ROI lower left x coordinate: {lower_left_x}")
+        raise ValueError(
+            f"Invalid ROI lower left x coordinate: {lower_left_x}")
     elif upper_right_y < 0:
-        raise ValueError(f"Invalid ROI upper right y coordinate: {upper_right_y}")
+        raise ValueError(
+            f"Invalid ROI upper right y coordinate: {upper_right_y}")
     elif roi_width < 0:
         raise ValueError(f"Invalid ROI width value: {roi_width}")
     elif roi_height < 0:
@@ -183,17 +200,20 @@ def save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery):
     if is_battery:
         print("Removing all but the dark blue color...")
         img_new = remove_all_but(img_copy, [255, 121, 0])
-        no_dark_blue_detected = np.sum(255 - img_new[roi_y:roi_y + roi_height, roi_x: roi_x + roi_width]) < 10
+        no_dark_blue_detected = np.sum(
+            255 - img_new[roi_y:roi_y + roi_height, roi_x: roi_x + roi_width]) < 10
         if no_dark_blue_detected:
             print("No dark blue color detected; assuming dark mode...")
             img_copy = img.copy()
             img_new = remove_all_but(img_copy, [0, 255 - 121, 255])
         img = img_new
 
-    row, img, scale_amount = slice_image(img, roi_x, roi_y, roi_width, roi_height)
+    row, img, scale_amount = slice_image(
+        img, roi_x, roi_y, roi_width, roi_height)
 
     print("Saving processed image...")
-    save_path = save_processed_image(img, roi_x, roi_y, roi_width, roi_height, filename, scale_amount)
+    save_path = save_processed_image(
+        img, roi_x, roi_y, roi_width, roi_height, filename, scale_amount)
 
     plt.close()
     plt.figure(figsize=(8, 2.25))
@@ -213,7 +233,8 @@ def save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery):
 
     debug_folder = 'debug'
     os.makedirs(debug_folder, exist_ok=True)
-    graph_save_name = os.path.join(debug_folder, "graph" + os.path.basename(filename))
+    graph_save_name = os.path.join(
+        debug_folder, "graph" + os.path.basename(filename))
     graph_save_name = graph_save_name.replace(".jfif", ".jpg")
 
     plt.savefig(graph_save_name, bbox_inches='tight', pad_inches=0)
@@ -227,7 +248,7 @@ def save_processed_image(image, x, y, width, height, original_filename, scale_am
     os.makedirs(debug_folder, exist_ok=True)
     save_name = os.path.join(debug_folder, os.path.basename(original_filename))
     roi = image[scale_amount * y:scale_amount * y + scale_amount * height,
-          scale_amount * x: scale_amount * x + scale_amount * width]
+                scale_amount * x: scale_amount * x + scale_amount * width]
 
     save_name = save_name.replace(".jfif", ".jpg")
     cv2.imwrite(save_name, roi)
