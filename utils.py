@@ -34,21 +34,26 @@ def find_closest_date_substring(text):
 
     return ""  # Return nothing if no valid date format is found
 
+
 def find_date_in_image(img):
-    date_find = pytesseract.image_to_data(img, config='--psm 6', output_type=Output.DICT)
+    date_find = pytesseract.image_to_data(
+        img, config='--psm 6', output_type=Output.DICT)
     all_text_combined = ' '.join(date_find['text'])
     return find_closest_date_substring(all_text_combined)
+
 
 def find_screenshot_title(img):
     title = ""
 
-    title_find = pytesseract.image_to_data(img, config='--psm 6', output_type=Output.DICT)
+    title_find = pytesseract.image_to_data(
+        img, config='--psm 6', output_type=Output.DICT)
     info_rect = [40, 300, 120, 750]  # Default title location
 
     found_info = False
     for i in range(len(title_find["level"])):
         if "INFO" in title_find["text"][i]:
-            info_rect = [title_find['left'][i], title_find['top'][i], title_find['width'][i], title_find['height'][i]]
+            info_rect = [title_find['left'][i], title_find['top']
+                         [i], title_find['width'][i], title_find['height'][i]]
             found_info = True
 
     if found_info:  # If we successfully found the "info" string...
@@ -57,7 +62,8 @@ def find_screenshot_title(img):
         title_origin_y = info_rect[1] + info_rect[3]
         x_origin = info_rect[0] + int(1.5 * info_rect[2])
         x_width = x_origin + int(info_rect[2]) * 8
-        app_extract = img[title_origin_y:title_origin_y + app_height, x_origin:x_width]
+        app_extract = img[title_origin_y:title_origin_y +
+                          app_height, x_origin:x_width]
     else:
         # Default to initial value
         app_extract = img[info_rect[0]:info_rect[2], info_rect[1]:info_rect[3]]
@@ -67,7 +73,8 @@ def find_screenshot_title(img):
         app_find = extract_all_text(app_extract)
 
         for i in range(len(app_find["level"])):
-            (x, y, w, h) = (app_find['left'][i], app_find['top'][i], app_find['width'][i], app_find['height'][i])
+            (x, y, w, h) = (app_find['left'][i], app_find['top']
+                            [i], app_find['width'][i], app_find['height'][i])
             cv2.rectangle(app_extract, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
             if len(app_find["text"][i]) > 2:
@@ -88,16 +95,31 @@ def extract_all_text(image):
 
     # Run multiple passes at catching text with OCR; can expand range
     for i in range(13, 14):
-        dictionary_temp = pytesseract.image_to_data(image, config='--psm ' + str(i), output_type=Output.DICT)
+        dictionary_temp = pytesseract.image_to_data(
+            image, config='--psm ' + str(i), output_type=Output.DICT)
         dictionary = dictionary_temp | dictionary
 
     return dictionary
+
+
+def replace_color(img, target_color, replacement_color, threshold=30):
+    distances = np.linalg.norm(img - target_color, axis=2)
+    mask = distances <= threshold
+    img[mask] = replacement_color
+    return img
 
 
 def convert_dark_mode(img):
     dark_mode_threshold = 100
     if np.mean(img) < dark_mode_threshold:
         img = 255 - img
+        if WANT_DEBUG_SUBIMAGE:
+            cv2.imshow('img', img)
+            cv2.waitKey(0)
+        img = replace_color(img, [197, 197, 195], [0, 0, 0])
+        if WANT_DEBUG_SUBIMAGE:
+            cv2.imshow('img', img)
+            cv2.waitKey(0)
         img = adjust_contrast_brightness(img, 3.0, 10)
 
     return img
@@ -110,7 +132,8 @@ def adjust_contrast_brightness(img, contrast: float = 1.0, brightness: int = 0):
 
 def get_pixel(img, arg):
     '''Get the dominant pixel in the image'''
-    unq, count = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
+    unq, count = np.unique(
+        img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
     sort = np.argsort(count)
     sorted_unq = unq[sort]
     if len(sorted_unq) <= 1:
@@ -130,7 +153,8 @@ def find_right_anchor(d, img, img_copy):
     key_list = ["60"]
 
     for i in range(n_boxes):
-        (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])
+        (x, y, w, h) = (d['left'][i], d['top']
+                        [i], d['width'][i], d['height'][i])
         cv2.rectangle(img_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         if any(key in d['text'][i] for key in key_list):
@@ -192,7 +216,8 @@ def find_left_anchor(d, img, img_copy):
     maximum_offset = 100
 
     for i in range(n_boxes):
-        (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])
+        (x, y, w, h) = (d['left'][i], d['top']
+                        [i], d['width'][i], d['height'][i])
         cv2.rectangle(img_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         if any(key in d['text'][i] for key in key_list):
@@ -279,7 +304,8 @@ def extract_line(img, x0, x1, y0, y1, mode):
                 pixel = sub_image[i, j]
                 if is_close(pixel, pixel_value):
                     row_score = row_score + 1
-            if row_score > 0.5 * shape[1]:  # Threshold set by inspection; can be modified
+            # Threshold set by inspection; can be modified
+            if row_score > 0.5 * shape[1]:
                 return i
 
     if mode == "vertical":
@@ -291,7 +317,8 @@ def extract_line(img, x0, x1, y0, y1, mode):
                 if is_close(pixel, pixel_value):
                     col_score = col_score + 1
 
-            if col_score > 0.25 * shape[0]:  # Threshold set by inspection; can be modified
+            # Threshold set by inspection; can be modified
+            if col_score > 0.25 * shape[0]:
                 return j
 
 
@@ -305,7 +332,8 @@ def is_close(pixel_1, pixel_2, thresh=1):
 def reduce_color_count(img, num_colors):
     '''Reduce the color count to help with aliasing'''
     for i in range(num_colors):
-        img[(img >= i * 255 / num_colors) & (img < (i + 1) * 255 / num_colors)] = i * 255 / (num_colors - 1)
+        img[(img >= i * 255 / num_colors) & (img < (i + 1) *
+                                             255 / num_colors)] = i * 255 / (num_colors - 1)
     return img
 
 
@@ -346,10 +374,12 @@ def slice_image(img, roi_x=1215, roi_y=384, roi_width=1078, roi_height=177):
     for slice_index in range(0, num_slice):
         # Slice of image, corresponds to time bars
         slice_x = roi_x + int(slice_index * slice_width_float)
-        slice_of_image = img[roi_y:roi_y + roi_height, slice_x:int(roi_x + (slice_index + 1) * slice_width_float)]
+        slice_of_image = img[roi_y:roi_y + roi_height,
+                             slice_x:int(roi_x + (slice_index + 1) * slice_width_float)]
 
         cv2.rectangle(img_copy, (slice_x, roi_y),
-                      (int(roi_x + (slice_index + 1) * slice_width_float), roi_y + roi_height),
+                      (int(roi_x + (slice_index + 1) *
+                       slice_width_float), roi_y + roi_height),
                       (0, 255, 0), 2)
 
         if WANT_DEBUG_SLICE:
@@ -438,7 +468,7 @@ def snap_to_grid(img, x, y, w, h):
     upper_left_x = x - buffer + line_col + moving_index
 
     grid_color = img[upper_left_y,
-                 upper_left_x - 1, :]
+                     upper_left_x - 1, :]
 
     test = remove_all_but(img.copy(), grid_color, 120)
     # show_until_destroyed("SHOWING WHAT HAPPENS WHEN WE REMOVE ALL", test)
@@ -522,7 +552,8 @@ def extract_line_snap_to_grid(img, x0, x1, y0, y1, mode, grid_color=None):
                 pixel = sub_image[i, j]
                 if is_close(pixel, count_color):
                     row_score = row_score + 1
-            if row_score > 0.7 * shape[1]:  # Threshold set by inspection; can be modified
+            # Threshold set by inspection; can be modified
+            if row_score > 0.7 * shape[1]:
                 return i
 
     if mode == "vertical":
@@ -549,7 +580,7 @@ def get_text(img, roi_x, roi_y, roi_width, roi_height):
     text_x_width = int(roi_width / 8)
     first_location = img[text_y_start:text_y_end, roi_x:(roi_x + text_x_width)]
     second_location = img[text_y_start:text_y_end,
-                      roi_x + int(roi_width / 2):(roi_x + int(roi_width / 2) + text_x_width)]
+                          roi_x + int(roi_width / 2):(roi_x + int(roi_width / 2) + text_x_width)]
 
     if WANT_DEBUG_TEXT:
         cv2.imshow("First text location", first_location)
