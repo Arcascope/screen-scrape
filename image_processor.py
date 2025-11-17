@@ -211,6 +211,11 @@ def save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery):
     row, img, scale_amount = slice_image(
         img, roi_x, roi_y, roi_width, roi_height)
 
+    total_minutes = row[-1]
+    hours = int(total_minutes // 60)
+    minutes = int(total_minutes % 60)
+    total_text = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+
     print("Saving processed image...")
     save_path = save_processed_image(
         img, roi_x, roi_y, roi_width, roi_height, filename, scale_amount)
@@ -223,13 +228,31 @@ def save_image(filename, roi_x, roi_y, roi_width, roi_height, is_battery):
     plt.ylim([0, 60])
     plt.xlim([0, 24])
 
-    plt.grid(True)
-    plt.xticks(ticks=range(0, len(row[:-1]), 6))  # Set x-ticks every 6 units
-    plt.yticks(ticks=range(0, 61, 15))  # Set y-ticks every 15 units
-    plt.gca().set_xticklabels([])
-    plt.gca().set_yticklabels([])
+    tick_positions = np.array(range(24)) + 0.5
+    tick_labels = [f"{int(x)}" for x in height]
 
-    plt.grid(which='both', linestyle='--', linewidth=0.5)
+    plt.xticks(tick_positions, tick_labels, fontsize=9, fontweight="bold")
+
+    ax = plt.gca()
+
+    plt.yticks([])
+    ax.yaxis.set_visible(False)
+
+    for spine in ["top", "right", "left"]:
+        ax.spines[spine].set_visible(False)
+
+    for x in range(25):
+        plt.axvline(x=x, color="gray", linestyle="--", linewidth=0.7, alpha=0.4)
+
+    plt.xlabel(
+        f"Calculated Total: {total_text}",
+        ha="center",
+        va="center",
+        labelpad=20,
+        fontsize=16,
+        fontweight="bold",
+        color="#0066CC",
+    )
 
     debug_folder = 'debug'
     os.makedirs(debug_folder, exist_ok=True)
