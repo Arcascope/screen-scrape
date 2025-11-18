@@ -5,3 +5,4 @@ output/*
 debug/*png
 debug/*jpg
 archive/*
+*.pyc

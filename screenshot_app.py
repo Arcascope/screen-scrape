@@ -85,8 +85,6 @@ class ScreenTimeRow:
 
 
 class ScreenshotApp(QWidget):
-    length_dimension = 600
-
     def __init__(self):
         super().__init__()
         self.time_mapping = None
@@ -235,10 +233,21 @@ class ScreenshotApp(QWidget):
 
         layout.addLayout(nav_layout)
 
-        screen_geo = QDesktopWidget().screenGeometry()
+        self.calculate_and_set_window_size()
 
-        self.resize(int(screen_geo.width() * 0.8),
-                    int(screen_geo.height() * 0.8))
+    def calculate_and_set_window_size(self):
+        screen_geo = QApplication.primaryScreen().geometry()
+        width = int(screen_geo.width() * 0.85)
+        height = int(screen_geo.height() * 0.85)
+
+        min_width = 800
+        min_height = 600
+
+        width = max(width, min_width)
+        height = max(height, min_height)
+
+        self.resize(width, height)
+        self.length_dimension = int(min(width, height) * 0.7)
 
     def update_instruction_label(self):
         if not self.failed:
