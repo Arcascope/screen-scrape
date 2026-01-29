@@ -390,12 +390,14 @@ def slice_image(img, roi_x=1215, roi_y=384, roi_width=1078, roi_height=177):
         rows = len(true_slice)
 
         lower_grid_buffer = 2
+        min_black_threshold = 5  # Don't reset if we've already seen meaningful usage
         counter = 0
         for y_coord in range(rows):
             if np.sum(true_slice[y_coord]) == 0:
                 counter = counter + 1
             if is_close(true_slice[y_coord], [255, 255, 255], 2) and y_coord < rows - lower_grid_buffer:
-                counter = 0
+                if counter < min_black_threshold:  # Only reset if we haven't seen much black yet
+                    counter = 0
 
         if VERBOSE:
             print(str(slice_index) + ", " + str((max_y * counter / rows)))
